@@ -37,9 +37,21 @@ class InventoryListCreateView(APIView):
         return Response(serializer.data, status=201)
 
     def get(self, request: Request, *args, **kwargs) -> Response:
-        serializer = self.serializer_class(self.get_queryset(), many=True)
-
-        return Response(serializer.data, status=200)
+        limit = int(request.query_params.get("limit", 3))
+        offset = int(request.query_params.get("offset", 0))
+        queryset = self.get_queryset()
+        total = queryset.count()
+        page = queryset[offset: offset + limit]
+        serializer = self.serializer_class(page, many=True)
+        return Response(
+            {
+                "count": total,
+                "limit": limit,
+                "offset": offset,
+                "results": serializer.data,
+            },
+            status=200,
+        )
 
     def get_queryset(self):
         return self.queryset.all()
@@ -231,3 +243,25 @@ class InventoryTypeRetrieveUpdateDestroyView(APIView):
 
     def get_queryset(self, **kwargs):
         return self.queryset.get(**kwargs)
+
+
+class InventoryCreatedAfterView(APIView):
+    """Challenge 1: List inventory items created after a certain day.
+
+    Query param: ?date=YYYY-MM-DD
+    """
+
+    queryset = Inventory.objects.all()
+    serializer_class = InventorySerializer
+
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        date = request.query_params.get("date")
+        if not date:
+            return Response({"error": "Query parameter 'date' is required."}, status=400)
+
+        queryset = self.queryset.filter(created_at__date__gt=date)
+        serializer = self.serializer_class(queryset, many=True)
+
+        return Response(serializer.data, status=200)
+
+
