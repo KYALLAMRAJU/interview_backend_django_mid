@@ -7,3 +7,4 @@ class InventoryMetaData(BaseModel):
     actors: list[str]
     imdb_rating: Decimal
     rotten_tomatoes_rating: int
+    film_locations: list[str] = []
