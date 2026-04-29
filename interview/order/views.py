@@ -1,3 +1,5 @@
+from datetime import date
+
 from rest_framework import generics
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -91,6 +93,24 @@ class OrdersByTagView(APIView):
             return Response({"error": "Tag not found."}, status=404)
 
         serializer = OrderSerializer(tag.orders.all(), many=True)
+        return Response(serializer.data, status=200)
+
+
+class OrdersFromJanToDateView(APIView):
+    """List all orders whose start_date falls between January 1st of the
+    current year and today (inclusive).
+
+    GET /orders/ytd/
+    """
+
+    def get(self, request: Request, *args, **kwargs) -> Response:
+        today = date.today()
+        jan_first = today.replace(month=1, day=1)
+        queryset = Order.objects.filter(
+            start_date__gte=jan_first,
+            start_date__lte=today,
+        )
+        serializer = OrderSerializer(queryset, many=True)
         return Response(serializer.data, status=200)
 
 

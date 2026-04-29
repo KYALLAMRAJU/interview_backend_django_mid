@@ -127,7 +127,44 @@ def test_order_tags_not_found(api_client):
     assert response.status_code == 404
 
 
-# --- Challenge 7: Orders on Tag ---
+# --- Orders from January to Today (YTD) ---
+
+@pytest.mark.django_db
+def test_orders_ytd_returns_order_with_todays_start_date(api_client, order):
+    # The order fixture uses start_date=date.today(), which is within Jan–today range
+    response = api_client.get("/orders/ytd/")
+    assert response.status_code == 200
+    ids = [o["id"] for o in response.data]
+    assert order.id in ids
+
+
+@pytest.mark.django_db
+def test_orders_ytd_excludes_order_before_jan(api_client, inventory):
+    last_year_dec = date.today().replace(month=1, day=1) - timedelta(days=1)
+    old_order = Order.objects.create(
+        inventory=inventory,
+        start_date=last_year_dec,
+        embargo_date=last_year_dec + timedelta(days=10),
+    )
+    response = api_client.get("/orders/ytd/")
+    assert response.status_code == 200
+    ids = [o["id"] for o in response.data]
+    assert old_order.id not in ids
+
+
+@pytest.mark.django_db
+def test_orders_ytd_excludes_future_order(api_client, inventory):
+    future_date = date.today() + timedelta(days=10)
+    future_order = Order.objects.create(
+        inventory=inventory,
+        start_date=future_date,
+        embargo_date=future_date + timedelta(days=30),
+    )
+    response = api_client.get("/orders/ytd/")
+    assert response.status_code == 200
+    ids = [o["id"] for o in response.data]
+    assert future_order.id not in ids
+
 
 @pytest.mark.django_db
 def test_orders_by_tag_returns_orders(api_client, order, order_tag):
